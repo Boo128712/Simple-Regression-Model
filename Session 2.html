@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng Dụng Tương Tác: Mô Hình Hồi Quy Tuyến Tính Đơn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices: 
+        - Introduction: Text, HTML for equation display. Goal: Define SRM. Method: Static text & MathJax-like HTML. Interaction: None. Justification: Foundational info.
+        - PRF & Causality: Text, HTML for equations. Chart.js scatter plot for PRF. Goal: Explain E(u|x)=0 and PRF. Method: Text, HTML, Chart.js. Interaction: Hover on chart points (if simple data). Justification: Visualize theoretical relationship.
+        - OLS Estimation: Text, HTML for formulas. Conceptual diagram (HTML/CSS) for minimizing SSR. Goal: Explain OLS. Method: Text, HTML. Interaction: None for core formulas. Justification: Present core estimation method.
+        - OLS Properties: List with explanations. Goal: Summarize properties. Method: HTML list. Interaction: Maybe hover for more details. Justification: Concise summary.
+        - Goodness-of-Fit (SST, SSE, SSR, R^2): Text, HTML for formulas. Example calculation (HTML). Goal: Explain model fit. Method: Text, HTML. Interaction: Update R^2 based on example values (if feasible). Justification: Demonstrate how model fit is assessed.
+        - Advanced (Units, Nonlinearity): Text, HTML. Interactive example for unit change (JS updates coefficients). Goal: Show impact of transformations. Method: Text, JS for dynamic updates. Interaction: Buttons to change units, see coefficient changes. Justification: Practical implications.
+        - Assumptions (SLR.1-SLR.5): Text. Chart.js scatter plots for Homoskedasticity vs. Heteroskedasticity, and illustrating Zero Conditional Mean. Goal: Explain assumptions & violations. Method: Text, Chart.js. Interaction: Toggle between "good" and "bad" examples for assumptions. Justification: Visual understanding of abstract concepts.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. All visualizations are either structured HTML/CSS/Unicode or Canvas-based (Chart.js).
+    -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-button { transition: all 0.3s ease; }
+        .tab-button.active { border-color: #0D9488; color: #0D9488; background-color: #CCFBF1; }
+        .tab-button:not(.active):hover { border-color: #5EEAD4; background-color: #F0FDFA; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .math { font-family: 'Times New Roman', serif; font-style: italic; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .info-icon {
+            cursor: pointer;
+            color: #0D9488; /* Teal */
+            margin-left: 8px;
+            font-weight: bold;
+        }
+        .info-popup {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 20;
+            max-width: 300px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-slate-700 p-4 md:p-8">
+
+    <div class="container mx-auto max-w-5xl bg-white p-6 md:p-8 rounded-lg shadow-xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-teal-700">Khám Phá Mô Hình Hồi Quy Tuyến Tính Đơn</h1>
+            <p class="text-slate-600 mt-2">Một công cụ tương tác để hiểu rõ các khái niệm cốt lõi.</p>
+        </header>
+
+        <nav class="mb-8 overflow-x-auto pb-2">
+            <ul class="flex space-x-2 md:space-x-4 border-b-2 border-slate-200">
+                <li><button class="tab-button active text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('gioiThieu')">Giới Thiệu</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('prf')">PRF & Nguyên Nhân</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('ols')">Ước Lượng OLS</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('thuocTinhOls')">Thuộc Tính OLS</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('doPhuHop')">Độ Phù Hợp</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('nangCao')">Nâng Cao</button></li>
+                <li><button class="tab-button text-sm md:text-base whitespace-nowrap py-3 px-3 md:px-5 border-b-4 border-transparent font-medium" onclick="showTab('giaDinh')">Các Giả Định</button></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section id="gioiThieu" class="content-section active">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">1. Giới Thiệu Mô Hình Hồi Quy Tuyến Tính Đơn</h2>
+                <p class="mb-4">Mô hình hồi quy tuyến tính đơn là một công cụ phân tích cơ bản trong kinh tế lượng, được thiết kế để định lượng và giải thích mối quan hệ giữa hai biến. Mô hình này đóng vai trò nền tảng trong việc hiểu cách một biến có thể được giải thích bởi một biến khác trong một tổng thể nhất định.</p>
+                
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">1.1. Định Nghĩa và Các Thành Phần Cơ Bản</h3>
+                    <p class="mb-2">Về bản chất, mô hình hồi quy tuyến tính đơn giải thích sự biến động của một biến phụ thuộc, ký hiệu là '<span class="math">y</span>', dựa trên sự biến động của một biến độc lập, ký hiệu là '<span class="math">x</span>'.</p>
+                    <p class="mb-2">Phương trình mô hình:</p>
+                    <p class="text-center text-lg font-mono bg-white p-3 rounded my-2"><span class="math">y</span> = <span class="math">&beta;<sub>0</sub></span> + <span class="math">&beta;<sub>1</sub>x</span> + <span class="math">u</span></p>
+                    <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li><strong>Biến phụ thuộc (<span class="math">y</span>):</strong> Biến mà mô hình tìm cách giải thích.</li>
+                        <li><strong>Biến độc lập (<span class="math">x</span>):</strong> Biến được sử dụng để giải thích <span class="math">y</span>.</li>
+                        <li><strong>Hệ số chặn (<span class="math">&beta;<sub>0</sub></span>):</strong> Giá trị kỳ vọng của <span class="math">y</span> khi <span class="math">x</span> = 0.</li>
+                        <li><strong>Hệ số góc (<span class="math">&beta;<sub>1</sub></span>):</strong> Sự thay đổi dự kiến trong <span class="math">y</span> khi <span class="math">x</span> thay đổi một đơn vị, giữ các yếu tố khác không đổi.</li>
+                        <li><strong>Sai số ngẫu nhiên (<span class="math">u</span>):</strong> Các yếu tố không quan sát được khác ảnh hưởng đến <span class="math">y</span>.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">1.2. Ví Dụ Minh Họa</h3>
+                    <p class="mb-2"><strong>Giá nhà và kích thước đất:</strong></p>
+                    <p class="font-mono bg-white p-2 rounded text-sm mb-1"><span class="math">house_price</span> = <span class="math">&beta;<sub>0</sub></span> + <span class="math">&beta;<sub>1</sub>landsize</span> + <span class="math">u</span></p>
+                    <p class="text-sm mb-3">Ở đây, <span class="math">&beta;<sub>1</sub></span> đo lường tác động của kích thước đất lên giá nhà, giả sử các yếu tố khác (số phòng, vị trí) không đổi.</p>
+                    
+                    <p class="mb-2"><strong>Tiền lương và học vấn:</strong></p>
+                    <p class="font-mono bg-white p-2 rounded text-sm mb-1"><span class="math">wage</span> = <span class="math">&beta;<sub>0</sub></span> + <span class="math">&beta;<sub>1</sub>educ</span> + <span class="math">u</span></p>
+                    <p class="text-sm">Ở đây, <span class="math">&beta;<sub>1</sub></span> đo lường sự thay đổi trong tiền lương khi có thêm một năm học vấn, giả sử các yếu tố khác (kinh nghiệm, trí thông minh) không đổi.</p>
+                </div>
+            </section>
+
+            <section id="prf" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">2. Giải Thích Nguyên Nhân và Hàm Hồi Quy Tổng Thể (PRF)</h2>
+                <p class="mb-4">Để mô hình hồi quy có thể giải thích theo hướng nhân quả, một giả định quan trọng là độc lập trung bình có điều kiện: <span class="math">E(u|x) = 0</span>. Giả định này nói rằng các yếu tố không quan sát được (<span class="math">u</span>) không tương quan một cách có hệ thống với biến giải thích (<span class="math">x</span>).</p>
+                
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">2.1. Hàm Hồi Quy Tổng Thể (PRF)</h3>
+                    <p class="mb-2">Nếu <span class="math">E(u|x) = 0</span>, thì giá trị trung bình có điều kiện của <span class="math">y</span> khi cho trước <span class="math">x</span> là:</p>
+                    <p class="text-center text-lg font-mono bg-white p-3 rounded my-2"><span class="math">E(y|x)</span> = <span class="math">&beta;<sub>0</sub></span> + <span class="math">&beta;<sub>1</sub>x</span></p>
+                    <p>Đây chính là Hàm Hồi Quy Tổng Thể (PRF). Nó mô tả mối quan hệ trung bình thực sự giữa <span class="math">y</span> và <span class="math">x</span> trong toàn bộ tổng thể.</p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">2.2. Minh Họa PRF</h3>
+                    <p class="mb-3">Biểu đồ dưới đây minh họa một PRF giả định cho mối quan hệ giữa tiết kiệm và thu nhập. Đường thẳng biểu diễn giá trị tiết kiệm trung bình kỳ vọng ở mỗi mức thu nhập.</p>
+                    <div class="chart-container bg-white p-2 rounded shadow">
+                        <canvas id="prfChart"></canvas>
+                    </div>
+                    <p class="text-sm mt-2 text-center text-slate-600">Biểu đồ minh họa đường PRF (Tiết kiệm ~ Thu nhập)</p>
+                </div>
+            </section>
+
+            <section id="ols" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">3. Ước Lượng Bình Phương Nhỏ Nhất Thông Thường (OLS)</h2>
+                <p class="mb-4">Phương pháp OLS được sử dụng để ước lượng các tham số <span class="math">&beta;<sub>0</sub></span> và <span class="math">&beta;<sub>1</sub></span> từ dữ liệu mẫu. Mục tiêu là tìm đường thẳng phù hợp nhất với dữ liệu bằng cách tối thiểu hóa tổng bình phương các phần dư.</p>
+                
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">3.1. Phần Dư Hồi Quy</h3>
+                    <p class="mb-2">Đường hồi quy ước tính: <span class="math">&hat;y</span> = <span class="math">&hat;&beta;<sub>0</sub></span> + <span class="math">&hat;&beta;<sub>1</sub>x</span></p>
+                    <p class="mb-2">Phần dư cho quan sát <span class="math">i</span>: <span class="math">&hat;u;<sub>i</sub></span> = <span class="math">y<sub>i</sub></span> - <span class="math">&hat;y;<sub>i</sub></span></p>
+                    <p>OLS tìm cách tối thiểu hóa: <span class="math">&sum; (&hat;u;<sub>i</sub>)<sup>2</sup></span></p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                     <h3 class="text-lg font-semibold text-slate-700 mb-2">3.2. Công Thức Ước Lượng OLS</h3>
+                    <p class="mb-2">Các ước lượng OLS được tính như sau:</p>
+                    <p class="font-mono bg-white p-2 rounded text-sm my-1"><span class="math">&hat;&beta;<sub>1</sub></span> = &Sigma;(<span class="math">x<sub>i</sub></span> - <span class="math">&bar;x</span>)(<span class="math">y<sub>i</sub></span> - <span class="math">&bar;y</span>) / &Sigma;(<span class="math">x<sub>i</sub></span> - <span class="math">&bar;x</span>)<sup>2</sup></p>
+                    <p class="font-mono bg-white p-2 rounded text-sm my-1"><span class="math">&hat;&beta;<sub>0</sub></span> = <span class="math">&bar;y</span> - <span class="math">&hat;&beta;<sub>1</sub>&bar;x</span></p>
+                    <p class="text-sm mt-1">Trong đó <span class="math">&bar;x</span> và <span class="math">&bar;y</span> là trung bình mẫu của <span class="math">x</span> và <span class="math">y</span>.</p>
+                </div>
+            </section>
+
+            <section id="thuocTinhOls" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">4. Các Thuộc Tính của Ước Lượng OLS (Trên Dữ Liệu Mẫu)</h2>
+                <p class="mb-4">Các ước lượng OLS có một số thuộc tính toán học quan trọng khi áp dụng trên dữ liệu mẫu:</p>
+                <ul class="list-disc list-inside space-y-2 bg-slate-50 p-4 rounded-md">
+                    <li>Tổng các phần dư hồi quy bằng 0: <span class="math">&Sigma;&hat;u;<sub>i</sub> = 0</span>.</li>
+                    <li>Hiệp phương sai mẫu giữa các phần dư và biến độc lập bằng 0: <span class="math">&Sigma;x<sub>i</sub>&hat;u;<sub>i</sub> = 0</span>.</li>
+                    <li>Điểm (<span class="math">&bar;x</span>, <span class="math">&bar;y</span>) luôn nằm trên đường hồi quy OLS.</li>
+                </ul>
+                <p class="mt-4">Những thuộc tính này là kết quả trực tiếp của việc tối thiểu hóa tổng bình phương phần dư.</p>
+                
+                <div class="bg-slate-50 p-4 rounded-md mt-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">Ví dụ Lương CEO</h3>
+                    <p class="mb-2">Xem xét mô hình: <span class="math">Salary = &beta;<sub>0</sub> + &beta;<sub>1</sub>ROE + u</span></p>
+                    <p class="mb-2">Giả sử kết quả ước lượng là: <span class="math">Salary_hat = 963.191 + 18.501 ROE</span></p>
+                    <p class="mb-2">Điều này có nghĩa là, với mỗi điểm phần trăm tăng thêm trong ROE, lương CEO được dự đoán tăng thêm 18,501 nghìn đô la (tức $18,501).</p>
+                    <p class="text-sm">Nếu một CEO có ROE là 10, lương dự đoán là <span class="math">963.191 + 18.501 * 10 = 1148.201</span> (nghìn đô la).</p>
+                    <p class="text-sm">Nếu lương thực tế của CEO này là 1000 (nghìn đô la), thì phần dư <span class="math">&hat;u;</span> = <span class="math">1000 - 1148.201 = -148.201</span>.</p>
+                </div>
+            </section>
+
+            <section id="doPhuHop" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">5. Đánh Giá Độ Phù Hợp Của Mô Hình</h2>
+                <p class="mb-4">Để đánh giá mức độ biến độc lập giải thích cho biến phụ thuộc, chúng ta sử dụng các thước đo độ phù hợp.</p>
+                
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">5.1. Phân Tích Tổng Bình Phương</h3>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>SST (Total Sum of Squares):</strong> Tổng bình phương toàn phần. Đo lường tổng biến thiên của <span class="math">y</span>. <span class="math">SST = &Sigma;(y<sub>i</sub> - &bar;y)<sup>2</sup></span>.</li>
+                        <li><strong>SSE (Explained Sum of Squares):</strong> Tổng bình phương được giải thích. Đo lường phần biến thiên của <span class="math">y</span> được giải thích bởi mô hình. <span class="math">SSE = &Sigma;(&hat;y;<sub>i</sub> - &bar;y)<sup>2</sup></span>.</li>
+                        <li><strong>SSR (Residual Sum of Squares):</strong> Tổng bình phương phần dư. Đo lường phần biến thiên của <span class="math">y</span> không được giải thích bởi mô hình. <span class="math">SSR = &Sigma;&hat;u;<sub>i</sub><sup>2</sup></span>.</li>
+                    </ul>
+                    <p class="mt-3 font-semibold">Mối quan hệ: <span class="math">SST = SSE + SSR</span></p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">5.2. Hệ Số Xác Định R-squared (<span class="math">R<sup>2</sup></span>)</h3>
+                    <p class="mb-2"><span class="math">R<sup>2</sup></span> đo lường tỷ lệ phần trăm tổng biến thiên của <span class="math">y</span> được giải thích bởi <span class="math">x</span>.</p>
+                    <p class="font-mono bg-white p-2 rounded text-sm my-1"><span class="math">R<sup>2</sup> = SSE / SST = 1 - SSR / SST</span></p>
+                    <p class="mb-2"><span class="math">R<sup>2</sup></span> nằm trong khoảng từ 0 đến 1. <span class="math">R<sup>2</sup></span> cao hơn cho thấy mô hình phù hợp hơn.</p>
+                    <p class="text-sm text-red-600"><strong>Lưu ý:</strong> <span class="math">R<sup>2</sup></span> thấp không có nghĩa là mô hình vô dụng, đặc biệt nếu mục tiêu là suy luận nhân quả. Không nên lạm dụng <span class="math">R<sup>2</sup></span> làm thước đo duy nhất.</p>
+                     <p class="text-sm mt-2">Trong ví dụ lương CEO, nếu <span class="math">R<sup>2</sup></span> = 0.013, điều đó có nghĩa là chỉ khoảng 1.3% sự thay đổi trong lương CEO được giải thích bởi ROE.</p>
+                </div>
+            </section>
+            
+            <section id="nangCao" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">6. Các Vấn Đề Nâng Cao</h2>
+                <p class="mb-4">Xem xét ảnh hưởng của đơn vị đo lường và các dạng hàm phi tuyến tính.</p>
+
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">6.1. Ảnh Hưởng của Thay Đổi Đơn Vị Đo Lường</h3>
+                    <p class="mb-2">Thay đổi đơn vị của <span class="math">y</span> hoặc <span class="math">x</span> sẽ thay đổi giá trị các hệ số <span class="math">&hat;&beta;<sub>0</sub></span> và <span class="math">&hat;&beta;<sub>1</sub></span>, nhưng <span class="math">R<sup>2</sup></span> sẽ không thay đổi.</p>
+                    <div class="border p-3 rounded-md bg-white mt-3">
+                        <p>Ví dụ: Lương CEO (<span id="salaryUnit">nghìn USD</span>) và ROE (%).</p>
+                        <p><span class="math">Salary_hat</span> = <span id="beta0_unit">963.191</span> + <span id="beta1_unit">18.501</span> ROE</p>
+                        <button class="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded text-sm mt-2" onclick="changeUnits()">Đổi Salary sang USD</button>
+                        <p class="text-xs mt-1">Giá trị <span class="math">R<sup>2</sup></span> không đổi khi đơn vị thay đổi.</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">6.2. Kết Hợp Phi Tuyến Tính: Dạng Bán Logarit</h3>
+                    <p class="mb-2">Đôi khi, mối quan hệ không phải là tuyến tính. Một dạng phổ biến là mô hình log-level:</p>
+                    <p class="font-mono bg-white p-2 rounded text-sm my-1"><span class="math">log(y)</span> = <span class="math">&beta;<sub>0</sub></span> + <span class="math">&beta;<sub>1</sub>x</span> + <span class="math">u</span></p>
+                    <p class="mb-2">Trong trường hợp này, <span class="math">&beta;<sub>1</sub></span> được giải thích là: khi <span class="math">x</span> tăng 1 đơn vị, <span class="math">y</span> thay đổi khoảng <span class="math">(100 * &beta;<sub>1</sub>)</span>%.</p>
+                    <p class="text-sm">Ví dụ: <span class="math">log(wage) = &beta;<sub>0</sub> + &beta;<sub>1</sub>educ + u</span>. Nếu <span class="math">&hat;&beta;<sub>1</sub> = 0.083</span>, thì mỗi năm học vấn tăng thêm làm tiền lương tăng khoảng 8.3%.</p>
+                </div>
+            </section>
+
+            <section id="giaDinh" class="content-section">
+                <h2 class="text-2xl font-semibold text-teal-600 mb-4">7. Các Giả Định của OLS</h2>
+                <p class="mb-4">Để các ước lượng OLS có những thuộc tính tốt (như không chệch, hiệu quả), một số giả định cần được thỏa mãn.</p>
+
+                <div class="bg-slate-50 p-4 rounded-md mb-6">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">7.1. Các Giả Định cho Tính Không Chệch (SLR.1 - SLR.4)</h3>
+                    <ul class="list-none space-y-3">
+                        <li>
+                            <strong>SLR.1 (Tuyến tính theo tham số):</strong> Mô hình tổng thể là <span class="math">y = &beta;<sub>0</sub> + &beta;<sub>1</sub>x + u</span>.
+                            <span class="info-icon" onclick="togglePopup('slr1-popup', this)">ⓘ</span>
+                            <div id="slr1-popup" class="info-popup">Mối quan hệ giữa y, x, và u trong tổng thể phải là tuyến tính theo các tham số &beta;<sub>0</sub> và &beta;<sub>1</sub>.</div>
+                        </li>
+                        <li>
+                            <strong>SLR.2 (Lấy mẫu ngẫu nhiên):</strong> Dữ liệu là một mẫu ngẫu nhiên từ tổng thể.
+                            <span class="info-icon" onclick="togglePopup('slr2-popup', this)">ⓘ</span>
+                            <div id="slr2-popup" class="info-popup">Mỗi quan sát (x<sub>i</sub>, y<sub>i</sub>) được rút ngẫu nhiên từ tổng thể và tuân theo phương trình tổng thể.</div>
+                        </li>
+                        <li>
+                            <strong>SLR.3 (Biến thiên mẫu trong biến giải thích):</strong> Các giá trị <span class="math">x<sub>i</sub></span> trong mẫu không được giống hệt nhau.
+                            <span class="info-icon" onclick="togglePopup('slr3-popup', this)">ⓘ</span>
+                            <div id="slr3-popup" class="info-popup">Phải có sự thay đổi (biến thiên) trong biến độc lập x để có thể ước lượng ảnh hưởng của nó lên y. Nếu tất cả x<sub>i</sub> đều bằng nhau, không thể tính &beta;<sub>1</sub>.</div>
+                        </li>
+                        <li>
+                            <strong>SLR.4 (Trung bình có điều kiện bằng không):</strong> <span class="math">E(u|x) = 0</span>. Đây là giả định quan trọng nhất cho tính không chệch.
+                            <span class="info-icon" onclick="togglePopup('slr4-popup', this)">ⓘ</span>
+                            <div id="slr4-popup" class="info-popup">Sai số ngẫu nhiên u có giá trị kỳ vọng bằng 0 tại bất kỳ giá trị nào của biến giải thích x. Điều này ngụ ý x không chứa thông tin về trung bình của các yếu tố không quan sát được trong u. Vi phạm giả định này (thường do biến bị bỏ sót tương quan với x) dẫn đến ước lượng OLS bị chệch.</div>
+                        </li>
+                    </ul>
+                    <p class="mt-3 text-sm text-red-600">Vi phạm SLR.4 (ví dụ, do biến bị bỏ sót tương quan với <span class="math">x</span>) sẽ làm cho ước lượng OLS bị chệch.</p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-md">
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">7.2. Giả Định Phương Sai Đồng Đều (Homoskedasticity - SLR.5)</h3>
+                    <p class="mb-2"><strong>SLR.5:</strong> Phương sai của sai số <span class="math">u</span> là không đổi với mọi giá trị của <span class="math">x</span>. Tức là, <span class="math">Var(u|x) = &sigma;<sup>2</sup></span> (hằng số).
+                        <span class="info-icon" onclick="togglePopup('slr5-popup', this)">ⓘ</span>
+                        <div id="slr5-popup" class="info-popup">Phương sai của các yếu tố không quan sát được (u) là như nhau ở mọi mức của biến giải thích x. Nếu phương sai thay đổi theo x, đó là phương sai không đồng đều (heteroskedasticity).</div>
+                    </p>
+                    <p class="mb-3">Nếu SLR.1 - SLR.5 được thỏa mãn, OLS là Ước Lượng Tuyến Tính Không Chệch Tốt Nhất (BLUE).</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <p class="text-center font-medium mb-1">Phương sai đồng đều (Homoskedasticity)</p>
+                            <div class="chart-container bg-white p-2 rounded shadow">
+                                <canvas id="homoskedasticityChart"></canvas>
+                            </div>
+                             <p class="text-xs mt-1 text-center text-slate-500">Phân tán của các điểm dữ liệu (hoặc phần dư) quanh đường hồi quy là nhất quán.</p>
+                        </div>
+                        <div>
+                            <p class="text-center font-medium mb-1">Phương sai không đồng đều (Heteroskedasticity)</p>
+                            <div class="chart-container bg-white p-2 rounded shadow">
+                                <canvas id="heteroskedasticityChart"></canvas>
+                            </div>
+                            <p class="text-xs mt-1 text-center text-slate-500">Phân tán của các điểm dữ liệu (hoặc phần dư) thay đổi theo giá trị của x (ví dụ: hình phễu).</p>
+                        </div>
+                    </div>
+                     <p class="mt-3 text-sm text-red-600">Nếu có phương sai không đồng đều (vi phạm SLR.5), OLS vẫn không chệch (nếu SLR.1-SLR.4 giữ) nhưng không còn là BLUE, và các kiểm định thống kê tiêu chuẩn có thể không đáng tin cậy.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 pt-6 border-t border-slate-300 text-center">
+            <p class="text-sm text-slate-500">&copy; 2024 Phân Tích Mô Hình Hồi Quy Tuyến Tính Đơn. Dựa trên tài liệu học thuật.</p>
+        </footer>
+    </div>
+    <div id="globalTooltip" class="tooltip"></div>
+
+<script>
+    let currentTab = 'gioiThieu';
+    const tabs = ['gioiThieu', 'prf', 'ols', 'thuocTinhOls', 'doPhuHop', 'nangCao', 'giaDinh'];
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const contentSections = document.querySelectorAll('.content-section');
+    const globalTooltip = document.getElementById('globalTooltip');
+
+    function showTab(tabId) {
+        contentSections.forEach(section => {
+            section.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+            if (button.getAttribute('onclick').includes(tabId)) {
+                button.classList.add('active');
+            }
+        });
+        currentTab = tabId;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Initial tab display
+    document.addEventListener('DOMContentLoaded', () => {
+        showTab('gioiThieu');
+        renderPrfChart();
+        renderHomoskedasticityChart();
+        renderHeteroskedasticityChart();
+    });
+
+    // Tooltip for charts
+    function showTooltip(chart, text, event) {
+        const chartRect = chart.canvas.getBoundingClientRect();
+        globalTooltip.innerHTML = text;
+        globalTooltip.style.opacity = '1';
+        globalTooltip.style.left = event.clientX - chartRect.left + 10 + 'px';
+        globalTooltip.style.top = event.clientY - chartRect.top + 10 + 'px';
+    }
+
+    function hideTooltip() {
+        globalTooltip.style.opacity = '0';
+    }
+    
+    // Popups for info icons
+    function togglePopup(popupId, iconElement) {
+        const popup = document.getElementById(popupId);
+        const iconRect = iconElement.getBoundingClientRect();
+        const containerRect = iconElement.closest('.container').getBoundingClientRect();
+
+        if (popup.style.display === 'block') {
+            popup.style.display = 'none';
+        } else {
+            // Close other popups
+            document.querySelectorAll('.info-popup').forEach(p => p.style.display = 'none');
+            
+            popup.style.display = 'block';
+            // Position popup relative to the icon
+            popup.style.top = (iconRect.bottom - containerRect.top + 5) + 'px'; // 5px below the icon
+            let leftPosition = iconRect.left - containerRect.left;
+            // Adjust if popup goes off-screen
+            if (leftPosition + popup.offsetWidth > containerRect.width - 20) { // 20px padding
+                leftPosition = containerRect.width - popup.offsetWidth - 20;
+            }
+            popup.style.left = Math.max(0, leftPosition) + 'px';
+        }
+    }
+
+    // Close popups when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.matches('.info-icon') && !event.target.closest('.info-popup')) {
+            document.querySelectorAll('.info-popup').forEach(popup => {
+                popup.style.display = 'none';
+            });
+        }
+    });
+
+
+    // Chart rendering functions
+    function renderPrfChart() {
+        const ctx = document.getElementById('prfChart').getContext('2d');
+        const dataPoints = [
+            { x: 10, y: 5 }, { x: 20, y: 8 }, { x: 30, y: 12 }, { x: 40, y: 15 }, 
+            { x: 50, y: 18 }, { x: 25, y: 9 }, { x: 35, y: 14 }
+        ];
+        new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Dữ liệu quan sát (Thu nhập, Tiết kiệm)',
+                    data: dataPoints,
+                    backgroundColor: 'rgba(13, 148, 136, 0.6)', // Teal
+                    borderColor: 'rgba(13, 148, 136, 1)',
+                    pointRadius: 5,
+                }, {
+                    label: 'PRF: E(Tiết kiệm|Thu nhập) = β₀ + β₁Thu nhập',
+                    type: 'line',
+                    data: [{x: 5, y: 2.5}, {x: 55, y: 20.5}], // Line from (5, 2.5) to (55, 20.5)
+                    borderColor: 'rgba(217, 119, 6, 1)', // Amber
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Thu Nhập (đơn vị tùy ý)' } },
+                    y: { title: { display: true, text: 'Tiết Kiệm (đơn vị tùy ý)' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if (context.dataset.type === 'line') return context.dataset.label;
+                                return `Thu nhập: ${context.parsed.x}, Tiết kiệm: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderHomoskedasticityChart() {
+        const ctx = document.getElementById('homoskedasticityChart').getContext('2d');
+        const data = [];
+        const lineY = x => 5 + 0.5 * x;
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * 100;
+            const error = (Math.random() - 0.5) * 20; // Constant variance for error
+            data.push({ x: x, y: lineY(x) + error });
+        }
+        new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Dữ liệu (y)',
+                    data: data,
+                    backgroundColor: 'rgba(13, 148, 136, 0.5)',
+                }, {
+                    label: 'Đường hồi quy thực',
+                    type: 'line',
+                    data: [{x:0, y:lineY(0)}, {x:100, y:lineY(100)}],
+                    borderColor: 'rgba(217, 119, 6, 1)',
+                    fill: false,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { title: { display: true, text: 'X'}}, y: { title: { display: true, text: 'Y'}}},
+                plugins: { legend: { display: false }}
+            }
+        });
+    }
+
+    function renderHeteroskedasticityChart() {
+        const ctx = document.getElementById('heteroskedasticityChart').getContext('2d');
+        const data = [];
+        const lineY = x => 5 + 0.5 * x;
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * 100;
+            const errorVariance = x * 0.5; // Variance increases with x
+            const error = (Math.random() - 0.5) * errorVariance;
+            data.push({ x: x, y: lineY(x) + error });
+        }
+         new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Dữ liệu (y)',
+                    data: data,
+                    backgroundColor: 'rgba(13, 148, 136, 0.5)',
+                }, {
+                    label: 'Đường hồi quy thực',
+                    type: 'line',
+                    data: [{x:0, y:lineY(0)}, {x:100, y:lineY(100)}],
+                    borderColor: 'rgba(217, 119, 6, 1)',
+                    fill: false,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { title: { display: true, text: 'X'}}, y: { title: { display: true, text: 'Y'}}},
+                plugins: { legend: { display: false }}
+            }
+        });
+    }
+
+    // Interactive unit change
+    let salaryInThousands = true;
+    let originalBeta0 = 963.191;
+    let originalBeta1 = 18.501;
+
+    function changeUnits() {
+        const salaryUnitEl = document.getElementById('salaryUnit');
+        const beta0El = document.getElementById('beta0_unit');
+        const beta1El = document.getElementById('beta1_unit');
+        const buttonEl = event.target;
+
+        if (salaryInThousands) {
+            salaryUnitEl.textContent = 'USD';
+            beta0El.textContent = (originalBeta0 * 1000).toFixed(3).replace(/\.000$/, '');
+            beta1El.textContent = (originalBeta1 * 1000).toFixed(3).replace(/\.000$/, '');
+            buttonEl.textContent = 'Đổi Salary sang Nghìn USD';
+            salaryInThousands = false;
+        } else {
+            salaryUnitEl.textContent = 'nghìn USD';
+            beta0El.textContent = originalBeta0.toFixed(3).replace(/\.000$/, '');
+            beta1El.textContent = originalBeta1.toFixed(3).replace(/\.000$/, '');
+            buttonEl.textContent = 'Đổi Salary sang USD';
+            salaryInThousands = true;
+        }
+    }
+
+</script>
+</body>
+</html>
+
